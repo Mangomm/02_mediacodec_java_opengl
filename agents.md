@@ -289,26 +289,7 @@ enum CAPTURE_STATE
 Java
     │
     ▼
-GLSurfaceView
-    │
-JNI AMediaCodec api
-    │
-Renderer
-    │
-SurfaceTexture
-    │
-MediaCodec
-    │
-OpenGL ES
-```
-
-## 目标架构
-
-```
-Java
-    │
-    ▼
-自定义Surface(这一步我不确定怎么传)
+Surface
     │
 MediaCodec
     │
@@ -325,14 +306,38 @@ EGLSurface
 OpenGL ES
 ```
 
+## 目标架构
+
+```
+Java
+    │
+    ▼
+Surface
+    │
+JNI AMediaCodec api
+    │
+TyyPlayer
+    │
+RenderThread
+    │
+EGLDisplay
+    │
+EGLContext
+    │
+EGLSurface
+    │
+OpenGL ES
+```
+
 最终目标：
 
-- 不再依赖 GLSurfaceView。
-- 使用 EGL14 自行管理 EGLDisplay、EGLContext、EGLSurface。
-- 使用独立 RenderThread 管理整个 OpenGL 生命周期。
+- 将java层的opengl和mediacodec解码器都放在Jni层，使用C/C++代替，java传入surface即可。
+- 优先支持安卓9系统。
+- 使用 C++ 自行管理 EGLDisplay、EGLContext、EGLSurface。
+- 使用 C++ 封装一个opengl渲染器类，mediacodec解码器类，然后使用播放器类来进行播放。
 - 所有 OpenGL 操作均在 RenderThread 中执行。
-- SurfaceTexture::updateTexImage() 在 RenderThread 中调用。
-- MediaCodec 解码流程保持不变，仅调整渲染流程。
+- 播放器要求有独立的读取线程，视频解码线程，视频渲染线程。
+- 读取线程支持送h264裸流进行解码。
 
 ---
 

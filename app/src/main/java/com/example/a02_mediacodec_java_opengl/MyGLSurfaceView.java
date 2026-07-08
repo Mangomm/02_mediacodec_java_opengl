@@ -38,7 +38,6 @@ import java.nio.FloatBuffer;
 
 public class MyGLSurfaceView extends SurfaceView implements SurfaceHolder.Callback {
 
-    private RenderThread mRenderThread;
     private boolean mPaused = false;
 
     public MyGLSurfaceView(Context context) {
@@ -56,47 +55,32 @@ public class MyGLSurfaceView extends SurfaceView implements SurfaceHolder.Callba
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        mRenderThread = new RenderThread(holder.getSurface());
-        mRenderThread.start();
-        if (mPaused) {
-            mRenderThread.onPause();
-        }
+        MainActivity.setRenderSurface(holder.getSurface());
+        MainActivity.setRenderPaused(mPaused);
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        if (mRenderThread != null) {
-            mRenderThread.setViewSize(width, height);
-        }
+        MainActivity.setRenderSize(width, height);
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-        if (mRenderThread != null) {
-            mRenderThread.shutdown();
-            mRenderThread = null;
-        }
+        MainActivity.releaseRenderSurface();
     }
 
     public void onPause() {
         mPaused = true;
-        if (mRenderThread != null) {
-            mRenderThread.onPause();
-        }
+        MainActivity.setRenderPaused(true);
     }
 
     public void onResume() {
         mPaused = false;
-        if (mRenderThread != null) {
-            mRenderThread.onResume();
-        }
+        MainActivity.setRenderPaused(false);
     }
 
     public SurfaceTexture getSurfaceTexture() {
-        if (mRenderThread == null) {
-            return null;
-        }
-        return mRenderThread.getSurfaceTexture();
+        return null;
     }
 }
 

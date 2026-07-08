@@ -287,6 +287,11 @@ public class MainActivity extends Activity {
     public static native void setPlayingStreamingMediaPlayer(boolean isPlaying);
     public static native void shutdown();
     public static native void setSurface(Surface surface);
+    public static native void setRenderSurface(Surface surface);
+    public static native void setRenderSize(int width, int height);
+    public static native void setRenderPaused(boolean paused);
+    public static native void releaseRenderSurface();
+    public static native boolean useRenderSurfaceAsSink();
     public static native void rewindStreamingMediaPlayer();
 
     /** Load jni .so on initialization */
@@ -342,10 +347,7 @@ public class MainActivity extends Activity {
 
         @Override
         void useAsSinkForNative() {
-            SurfaceTexture st = mMyGLSurfaceView.getSurfaceTexture();
-            Surface s = new Surface(st);
-            setSurface(s);
-            s.release();
+            useRenderSurfaceAsSink();
         }
 
     }

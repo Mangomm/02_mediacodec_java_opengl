@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "NativeRenderThread.h"
 #include "looper.h"
 #include "media/NdkMediaCodec.h"
 #include "media/NdkMediaExtractor.h"
@@ -68,6 +69,7 @@ typedef struct {
 } workerdata;
 
 workerdata data = {-1, NULL, NULL, NULL, 0, false, false, false, false};
+static NativeRenderThread* native_render_thread = NULL;
 
 enum {
     kMsgCodecBuffer,
@@ -308,6 +310,54 @@ void SetSurface(JNIEnv* env, jclass, jobject surface) {
 //    LOGV("@@@ setsurface %p", data.window);;
 }
 
+void SetRenderSurface(JNIEnv* env, jclass, jobject surface) {
+    if (!native_render_thread) {
+        return;
+    }
+    ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
+    native_render_thread->set_render_window(window);
+    if (window) {
+        ANativeWindow_release(window);
+    }
+}
+
+void SetRenderSize(JNIEnv*, jclass, jint width, jint height) {
+    if (native_render_thread) {
+        native_render_thread->set_render_size(width, height);
+    }
+}
+
+void SetRenderPaused(JNIEnv*, jclass, jboolean paused) {
+    if (native_render_thread) {
+        native_render_thread->set_paused(paused);
+    }
+}
+
+void ReleaseRenderSurface(JNIEnv*, jclass) {
+    if (native_render_thread) {
+        native_render_thread->release_render_window();
+    }
+}
+
+jboolean UseRenderSurfaceAsSink(JNIEnv*, jclass) {
+    if (!native_render_thread) {
+        return JNI_FALSE;
+    }
+
+    ANativeWindow* window = native_render_thread->get_codec_window();
+    if (!window) {
+        return JNI_FALSE;
+    }
+
+    if (data.window) {
+        ANativeWindow_release(data.window);
+        data.window = NULL;
+    }
+    ANativeWindow_acquire(window);
+    data.window = window;
+    return JNI_TRUE;
+}
+
 // rewind the streaming media player
 void RewindStreamingMediaPlayer(JNIEnv*, jclass) {
 //    LOGV("@@@ rewind");
@@ -322,6 +372,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* _Nonnull vm,
     if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
         return JNI_ERR;
     }
+    native_render_thread = new NativeRenderThread(vm);
 
     jclass c = env->FindClass("com/example/a02_mediacodec_java_opengl/MainActivity");
     if (c == nullptr) return JNI_ERR;
@@ -335,6 +386,12 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* _Nonnull vm,
             {"shutdown", "()V", reinterpret_cast<void*>(Shutdown)},
             {"setSurface", "(Landroid/view/Surface;)V",
                                 reinterpret_cast<void*>(SetSurface)},
+            {"setRenderSurface", "(Landroid/view/Surface;)V",
+                                reinterpret_cast<void*>(SetRenderSurface)},
+            {"setRenderSize", "(II)V", reinterpret_cast<void*>(SetRenderSize)},
+            {"setRenderPaused", "(Z)V", reinterpret_cast<void*>(SetRenderPaused)},
+            {"releaseRenderSurface", "()V", reinterpret_cast<void*>(ReleaseRenderSurface)},
+            {"useRenderSurfaceAsSink", "()Z", reinterpret_cast<void*>(UseRenderSurfaceAsSink)},
             {"rewindStreamingMediaPlayer", "()V",
                                 reinterpret_cast<void*>(RewindStreamingMediaPlayer)},
     };
